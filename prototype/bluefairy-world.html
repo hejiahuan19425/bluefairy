@@ -26,10 +26,10 @@
     border:.5px solid rgba(200,196,186,.18); display:none; }
   #knob { position:absolute; left:50%; top:50%; width:44px; height:44px; border-radius:50%;
     background:rgba(200,196,186,.16); transform:translate(-50%,-50%); }
-  #tomb { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+  #tomb, #david { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
     z-index:20; opacity:0; pointer-events:none; transition:opacity 1s; padding:22px;
     background:rgba(5,7,10,.35); }
-  #tomb.show { opacity:1; pointer-events:auto; }
+  #tomb.show, #david.show { opacity:1; pointer-events:auto; }
   .stone-face { width:min(400px,92vw); max-height:80vh; overflow-y:auto; background:rgba(15,18,25,.94);
     border:.5px solid #262c38; border-radius:6px; padding:36px 30px 26px; color:#C8C4BA; }
   .date { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.15em; color:#565B64; }
@@ -48,7 +48,7 @@
 <body>
 <div id="title">蓝仙女</div>
 <div id="cycle">实时</div>
-<div id="help">W A S D 走动 · 拖动转视角</div>
+<div id="help">W A S D 走动 · Q R 转视角 · 走近碑或守墓人按 E</div>
 <div id="hint">读碑</div>
 <div id="stick"><div id="knob"></div></div>
 
@@ -67,6 +67,13 @@
       <span class="blue" id="drop">放一颗石子</span>
       <span id="share">指路</span>
     </div>
+  </div>
+</div>
+<div id="david">
+  <div class="stone-face">
+    <div class="date">DAVID · 守墓人</div>
+    <div class="epitaph" id="dline"></div>
+    <div class="acts"><span id="dbye">再会</span><span class="blue" id="dnext">听他说下去</span></div>
   </div>
 </div>
 <div id="toast"></div>
@@ -173,7 +180,7 @@ function tombstone(x,z,special){
   if (special){
     for (let i=0;i<7;i++){
       const s = new THREE.Mesh(new THREE.SphereGeometry(.075,5,4),
-        new THREE.MeshStandardMaterial({ color:0x1B4364, flatShading:true }));
+        new THREE.MeshStandardMaterial({ color:0x1B4364, emissive:0x1B4364, emissiveIntensity:.55, flatShading:true }));
       s.position.set(x+(Math.random()-.5)*.7, .06, z+.3+Math.random()*.2);
       s.scale.y=.6; scene.add(s);
     }
@@ -187,7 +194,9 @@ for (let i=0;i<26;i++){
   tombs.push(tombstone(p.x+n.x*off*side, p.z+n.z*off*side, false));
 }
 const special = tombstone(...(()=>{ const p=curve.getPoint(.45), tg=curve.getTangent(.45);
-  return [p.x-tg.z*3.2, p.z+tg.x*3.2]; })(), true);
+  return [p.x-tg.z*2.1, p.z+tg.x*2.1]; })(), true);
+const blueL = new THREE.PointLight(0x2E6BA8, 0, 8, 1.6);
+blueL.position.set(special.position.x, 1.3, special.position.z); scene.add(blueL);
 
 // ---------- 路灯 ----------
 const lamps = [];
@@ -220,6 +229,24 @@ player.add(cloak, hood, trim);
 player.position.set(0,0,50);
 scene.add(player);
 
+// ---------- 守墓人 David ----------
+const david = new THREE.Group();
+const dcloak = new THREE.Mesh(new THREE.ConeGeometry(.4,1.15,7),
+  new THREE.MeshStandardMaterial({ color:0x2B333F, flatShading:true }));
+dcloak.position.y = .58; dcloak.castShadow = true;
+const dhood = new THREE.Mesh(new THREE.ConeGeometry(.23,.42,7),
+  new THREE.MeshStandardMaterial({ color:0x242C36, flatShading:true }));
+dhood.position.y = 1.26;
+const lantern = new THREE.Mesh(new THREE.BoxGeometry(.14,.18,.14),
+  new THREE.MeshStandardMaterial({ color:0xD6B16E, emissive:0xD6B16E, emissiveIntensity:.9 }));
+lantern.position.set(.42,.62,0);
+const lanternL = new THREE.PointLight(0xE8B96E, 1.2, 7, 1.8);
+lanternL.position.set(.42,.7,0);
+david.add(dcloak, dhood, lantern, lanternL);
+(()=>{ const p=curve.getPoint(.68), tg=curve.getTangent(.68);
+  david.position.set(p.x-tg.z*1.8, 0, p.z+tg.x*1.8); })();
+scene.add(david);
+
 // ---------- 光照与昼夜 ----------
 const hemi = new THREE.HemisphereLight(0xdfe6ef, 0x3a4028, .6); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff2dc, 1);
@@ -229,8 +256,20 @@ sun.shadow.camera.top=40; sun.shadow.camera.bottom=-40;
 scene.add(sun); scene.add(sun.target);
 scene.fog = new THREE.FogExp2(0xd8d4c6, .012);
 
-const C = { daySky:new THREE.Color(0xD8D2C0), nightSky:new THREE.Color(0x0A0E1A),
-  dayFog:new THREE.Color(0xD8D2C0), nightFog:new THREE.Color(0x0B101C) };
+const moon = new THREE.Mesh(new THREE.SphereGeometry(4.5,16,16),
+  new THREE.MeshBasicMaterial({ color:0xDCE4F2, fog:false, transparent:true }));
+moon.position.set(55,72,-95); scene.add(moon);
+const starPos = [];
+for (let i=0;i<420;i++){ const a=Math.random()*6.283, e=Math.random()*.8+.12, r=185;
+  starPos.push(Math.cos(a)*Math.cos(e)*r, Math.sin(e)*r, Math.sin(a)*Math.cos(e)*r); }
+const starG = new THREE.BufferGeometry();
+starG.setAttribute('position', new THREE.Float32BufferAttribute(starPos,3));
+const stars = new THREE.Points(starG,
+  new THREE.PointsMaterial({ color:0xC9D4E8, size:.8, fog:false, transparent:true, opacity:0 }));
+scene.add(stars);
+
+const C = { daySky:new THREE.Color(0xD8D2C0), nightSky:new THREE.Color(0x111726),
+  dayFog:new THREE.Color(0xD8D2C0), nightFog:new THREE.Color(0x141B29) };
 let mode = 'auto';
 $('cycle').addEventListener('click', ()=>{
   mode = mode==='auto' ? 'day' : mode==='day' ? 'night' : 'auto';
@@ -245,12 +284,15 @@ function applySky(dl){
   const sky = C.nightSky.clone().lerp(C.daySky, dl);
   const fog = C.nightFog.clone().lerp(C.dayFog, dl);
   renderer.setClearColor(sky); scene.fog.color.copy(fog);
-  scene.fog.density = .012 + (1-dl)*.008;
-  hemi.intensity = .12 + dl*.55;
-  sun.intensity = .12 + dl*.95;
+  scene.fog.density = .011 + (1-dl)*.004;
+  hemi.intensity = .3 + dl*.4;
+  sun.intensity = .32 + dl*.75;
   sun.color.setHex(dl>.5?0xfff2dc:0x9fb2d8);
   const a = dl*Math.PI*.7 + .3;
   sun.position.set(Math.cos(a)*30, 12+dl*26, -20);
+  stars.material.opacity = Math.max(0, 1-dl*1.4);
+  moon.material.opacity = Math.max(0, 1-dl*1.4);
+  blueL.intensity = Math.max(0, 1-dl*1.5)*1.3;
   const lampI = Math.max(0, 1-dl*1.6);
   lamps.forEach(({head,light})=>{ light.intensity = lampI*2.4; head.material.emissiveIntensity = lampI; });
 }
@@ -258,7 +300,7 @@ function applySky(dl){
 // ---------- 控制 ----------
 const keys = {};
 addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true;
-  if (e.key.toLowerCase()==='e' && nearTomb) openTomb(); });
+  if (e.key.toLowerCase()==='e'){ if (nearDavid) openDavid(); else if (nearTomb) openTomb(); } });
 addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
 let yaw = 0, pitch = .32;
@@ -294,11 +336,24 @@ function endPtr(e){
 addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
 
 // ---------- 碑前交互 ----------
-let nearTomb = false, opened = false, dropped = false;
+let nearTomb = false, nearDavid = false, opened = false, dOpened = false, dropped = false;
+const dlines = [
+  '晚上好。夜里来的人，脚步总是轻一些。',
+  '这园子里的每一块碑我都读过。你若葬了什么在这里，我会替你守着。',
+  '石子我从不去动。那是路过的人放下的，不属于我。',
+  '丘顶那块碑还空着——等园子真正开门那天，第一段对话会葬在那里。',
+  '去走走吧。有些碑，要慢下来才看得见。'
+];
+let dIdx = 0;
+function openDavid(){ dOpened = true; dIdx = 0;
+  $('dline').textContent = dlines[0]; $('david').classList.add('show'); }
+$('dnext').addEventListener('click', ()=>{
+  dIdx = (dIdx+1)%dlines.length; $('dline').textContent = dlines[dIdx]; });
+$('dbye').addEventListener('click', ()=>{ dOpened=false; $('david').classList.remove('show'); });
 function toast(t){ const el=$('toast'); el.textContent=t; el.style.opacity=1;
   clearTimeout(el._t); el._t=setTimeout(()=>el.style.opacity=0, 2200); }
 function openTomb(){ opened = true; $('tomb').classList.add('show'); }
-$('hint').addEventListener('click', openTomb);
+$('hint').addEventListener('click', ()=>{ nearDavid ? openDavid() : openTomb(); });
 $('leave').addEventListener('click', ()=>{ opened=false; $('tomb').classList.remove('show'); });
 $('share').addEventListener('click', async ()=>{
   try { await navigator.clipboard.writeText('https://bluefairy.example/tomb/demo'); } catch(e){}
@@ -333,7 +388,9 @@ function frame(){
   let mx = (keys.d?1:0)-(keys.a?1:0) + joyVec.x;
   let mz = (keys.s?1:0)-(keys.w?1:0) + joyVec.y;
   const mlen = Math.hypot(mx,mz);
-  if (mlen > 0 && !opened){
+  if (keys.q) yaw += dt*1.9;
+  if (keys.r) yaw -= dt*1.9;
+  if (mlen > 0 && !opened && !dOpened){
     mx/=Math.max(1,mlen); mz/=Math.max(1,mlen);
     const dir = new THREE.Vector3(mx,0,mz).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
     player.position.addScaledVector(dir, dt*5.2);
@@ -358,8 +415,14 @@ function frame(){
 
   const dTomb = player.position.distanceTo(special.position);
   nearTomb = dTomb < 3.2;
-  $('hint').classList.toggle('show', nearTomb && !opened);
+  const dDav = player.position.distanceTo(david.position);
+  nearDavid = dDav < 3.6;
+  if (dDav < 8) david.rotation.y = Math.atan2(
+    player.position.x-david.position.x, player.position.z-david.position.z);
+  $('hint').textContent = nearDavid ? '与守墓人说话' : '读碑';
+  $('hint').classList.toggle('show', (nearTomb||nearDavid) && !opened && !dOpened);
   if (!nearTomb && opened){ opened=false; $('tomb').classList.remove('show'); }
+  if (!nearDavid && dOpened){ dOpened=false; $('david').classList.remove('show'); }
 
   applySky(daylight());
   renderer.render(scene, camera);
