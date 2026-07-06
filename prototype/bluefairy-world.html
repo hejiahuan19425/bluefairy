@@ -169,23 +169,45 @@ while (planted < 90){
 }
 
 // ---------- 碑群 ----------
-const tombM = new THREE.MeshStandardMaterial({ map:stoneT });
+const tombM = new THREE.MeshStandardMaterial({ map:stoneT, color:0x8F938B, roughness:.92 });
+const tombSideM = new THREE.MeshStandardMaterial({ color:0x555B5C, roughness:.95, flatShading:true });
+const carvingM = new THREE.MeshStandardMaterial({ color:0x34393D, roughness:1, flatShading:true });
+const pebbleM = new THREE.MeshStandardMaterial({ color:0x12324E, emissive:0x0A2034, emissiveIntensity:.28, roughness:.85, flatShading:true });
 const tombs = [];
+function makeStone(x,y,z,scale=1){
+  const s = new THREE.Mesh(new THREE.DodecahedronGeometry(.095*scale, 0), pebbleM);
+  s.position.set(x,y,z);
+  s.scale.set(1.15+Math.random()*.35, .42+Math.random()*.18, .85+Math.random()*.3);
+  s.rotation.set(Math.random()*.35, Math.random()*6.28, Math.random()*.35);
+  s.castShadow = true;
+  scene.add(s);
+  return s;
+}
 function tombstone(x,z,special){
   const h = special? 1.5 : .8+Math.random()*.5;
-  const m = new THREE.Mesh(new THREE.BoxGeometry(.7+Math.random()*.3, h, .22), tombM);
-  m.position.set(x, h/2, z);
-  m.rotation.y = (Math.random()-.5)*.5; m.rotation.z = (Math.random()-.5)*.06;
-  m.castShadow = true; scene.add(m);
+  const w = .72+Math.random()*.18, d = .28;
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(w+.22, .16, d+.18), tombSideM);
+  base.position.y = .08; base.castShadow = base.receiveShadow = true; g.add(base);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), tombM);
+  body.position.y = .16+h/2; body.castShadow = body.receiveShadow = true; g.add(body);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(w*.54, .28, 4), tombM);
+  cap.position.y = .16+h+.12; cap.rotation.y = Math.PI/4; cap.scale.z = d/w;
+  cap.castShadow = cap.receiveShadow = true; g.add(cap);
+  for (let i=0;i<3;i++){
+    const line = new THREE.Mesh(new THREE.BoxGeometry(w*.42, .018, .01), carvingM);
+    line.position.set(0, .16+h*(.62-i*.12), d/2+.006);
+    g.add(line);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = (Math.random()-.5)*.5; g.rotation.z = (Math.random()-.5)*.04;
+  scene.add(g);
   if (special){
     for (let i=0;i<7;i++){
-      const s = new THREE.Mesh(new THREE.SphereGeometry(.075,5,4),
-        new THREE.MeshStandardMaterial({ color:0x1B4364, emissive:0x1B4364, emissiveIntensity:.55, flatShading:true }));
-      s.position.set(x+(Math.random()-.5)*.7, .06, z+.3+Math.random()*.2);
-      s.scale.y=.6; scene.add(s);
+      makeStone(x+(Math.random()-.5)*.72, .055, z+.34+Math.random()*.24, .88);
     }
   }
-  return m;
+  return g;
 }
 for (let i=0;i<26;i++){
   const t = .1+ .8*rnd(), p = curve.getPoint(t), tg = curve.getTangent(t);
@@ -299,9 +321,17 @@ function applySky(dl){
 
 // ---------- 控制 ----------
 const keys = {};
-addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true;
-  if (e.key.toLowerCase()==='e'){ if (nearDavid) openDavid(); else if (nearTomb) openTomb(); } });
-addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+function keyOf(e){
+  if (e.code && e.code.startsWith('Key')) return e.code.slice(3).toLowerCase();
+  return e.key.toLowerCase();
+}
+addEventListener('keydown', e => {
+  const k = keyOf(e);
+  if ('wasdqre'.includes(k)) e.preventDefault();
+  keys[k] = true;
+  if (k==='e'){ if (nearDavid) openDavid(); else if (nearTomb) openTomb(); }
+});
+addEventListener('keyup', e => keys[keyOf(e)] = false);
 
 let yaw = 0, pitch = .32;
 let joyVec = { x:0, y:0 };
@@ -362,15 +392,23 @@ const pile = $('pile'); const blues=['#0D2A42','#12324E','#183A57','#1B4364'];
 let stones = 0;
 function addStone(anim){
   const n = stones++;
-  const el = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+  const el = document.createElementNS('http://www.w3.org/2000/svg','path');
   const row = Math.floor(n/7), i = n%7;
   const cx = 110+(i-3)*22+(row%2)*11, cy = 33-row*8;
-  el.setAttribute('cx',cx); el.setAttribute('rx',8); el.setAttribute('ry',5);
+  const rx = 8 + (n%3), ry = 4.8 + (n%2)*.8;
+  const pts = [];
+  for (let a=0;a<8;a++){
+    const t = a/8*Math.PI*2, wobble = .84 + (((n+a*5)%7)/30);
+    pts.push([cx+Math.cos(t)*rx*wobble, cy+Math.sin(t)*ry*wobble]);
+  }
+  el.setAttribute('d', 'M'+pts.map(p=>p.map(v=>v.toFixed(1)).join(',')).join('L')+'Z');
   el.setAttribute('fill', blues[n%4]);
-  if (anim){ el.setAttribute('cy',cy-22); el.style.transition='cy .45s cubic-bezier(.4,1.6,.6,1)';
+  el.setAttribute('stroke', 'rgba(200,196,186,.12)');
+  el.setAttribute('stroke-width', '.6');
+  if (anim){ el.style.transform=`translateY(-22px)`; el.style.transition='transform .45s cubic-bezier(.4,1.6,.6,1)';
     pile.appendChild(el);
-    requestAnimationFrame(()=>requestAnimationFrame(()=>el.setAttribute('cy',cy)));
-  } else { el.setAttribute('cy',cy); pile.appendChild(el); }
+    requestAnimationFrame(()=>requestAnimationFrame(()=>el.style.transform='translateY(0)'));
+  } else { pile.appendChild(el); }
 }
 for (let i=0;i<7;i++) addStone(false);
 $('drop').addEventListener('click', ()=>{
