@@ -115,6 +115,9 @@ scene.add(ground);
 const pathPts = [ new THREE.Vector3(0,0,54), new THREE.Vector3(-7,0,36), new THREE.Vector3(6,0,18),
   new THREE.Vector3(-8,0,-2), new THREE.Vector3(4,0,-22), new THREE.Vector3(0,0,-40) ];
 const curve = new THREE.CatmullRomCurve3(pathPts);
+const pathBaseM = new THREE.MeshStandardMaterial({ map:gravelT, color:0x85806F, roughness:.95 });
+const slabM = new THREE.MeshStandardMaterial({ color:0x8B8678, roughness:.96, flatShading:true });
+const slabDarkM = new THREE.MeshStandardMaterial({ color:0x5D635E, roughness:.98, flatShading:true });
 (function buildPath(){
   const N = 120, w = 1.5, pos=[], uv=[], idx=[];
   for (let i=0;i<=N;i++){
@@ -128,8 +131,27 @@ const curve = new THREE.CatmullRomCurve3(pathPts);
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
   g.setIndex(idx); g.computeVertexNormals();
-  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map:gravelT }));
+  const m = new THREE.Mesh(g, pathBaseM);
   m.receiveShadow = true; scene.add(m);
+})();
+(function buildSlabs(){
+  for (let i=0;i<54;i++){
+    const t = .018 + i*.0178;
+    const p = curve.getPoint(Math.min(.985,t)), tg = curve.getTangent(Math.min(.985,t));
+    const n = new THREE.Vector3(-tg.z,0,tg.x).normalize();
+    const slab = new THREE.Mesh(new THREE.CylinderGeometry(.55+Math.random()*.16, .6+Math.random()*.14, .055, 7), i%3?slabM:slabDarkM);
+    slab.position.set(p.x+n.x*(Math.random()-.5)*.3, .065, p.z+n.z*(Math.random()-.5)*.3);
+    slab.scale.set(1.25+Math.random()*.45, 1, .72+Math.random()*.28);
+    slab.rotation.y = Math.atan2(tg.x, tg.z) + (Math.random()-.5)*.35;
+    slab.receiveShadow = slab.castShadow = true;
+    scene.add(slab);
+  }
+  for (let i=0;i<9;i++){
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(2.5-i*.08, .12, .72), slabM);
+    slab.position.set(0, 3.15+i*.18, -43.2-i*1.05);
+    slab.rotation.x = -.18; slab.receiveShadow = slab.castShadow = true;
+    scene.add(slab);
+  }
 })();
 
 // ---------- 园心小丘与主碑 ----------
@@ -167,6 +189,15 @@ while (planted < 90){
   if (Math.hypot(x, z+52) < 18) continue;
   tree(x, z, .8 + rnd()*.9); planted++;
 }
+for (let i=0;i<34;i++){
+  const t = .04 + i*.027;
+  const p = curve.getPoint(Math.min(.96,t)), tg = curve.getTangent(Math.min(.96,t));
+  const n = new THREE.Vector3(-tg.z,0,tg.x).normalize();
+  const side = i%2 ? 1 : -1;
+  const off = 6.2 + rnd()*4.2;
+  const x = p.x+n.x*off*side, z = p.z+n.z*off*side;
+  if (Math.hypot(x, z+52) > 19) tree(x, z, .95 + rnd()*.55);
+}
 
 // ---------- 碑群 ----------
 const tombM = new THREE.MeshStandardMaterial({ map:stoneT, color:0x8F938B, roughness:.92 });
@@ -183,24 +214,39 @@ function makeStone(x,y,z,scale=1){
   scene.add(s);
   return s;
 }
-function tombstone(x,z,special){
-  const h = special? 1.5 : .8+Math.random()*.5;
-  const w = .72+Math.random()*.18, d = .28;
+function archedTombGeometry(w,h,d){
+  const sh = new THREE.Shape();
+  sh.moveTo(-w/2, 0);
+  sh.lineTo(-w/2, h*.72);
+  sh.quadraticCurveTo(-w*.42, h*.98, 0, h);
+  sh.quadraticCurveTo(w*.42, h*.98, w/2, h*.72);
+  sh.lineTo(w/2, 0);
+  sh.lineTo(-w/2, 0);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth:d, bevelEnabled:true, bevelSize:.025, bevelThickness:.018, bevelSegments:1 });
+  geo.translate(0, 0, -d/2);
+  return geo;
+}
+function tombstone(x,z,special,faceYaw=null){
+  const h = special? 1.62 : .85+Math.random()*.42;
+  const w = special? .92 : .7+Math.random()*.16, d = .3;
   const g = new THREE.Group();
   const base = new THREE.Mesh(new THREE.BoxGeometry(w+.22, .16, d+.18), tombSideM);
   base.position.y = .08; base.castShadow = base.receiveShadow = true; g.add(base);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), tombM);
-  body.position.y = .16+h/2; body.castShadow = body.receiveShadow = true; g.add(body);
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(w*.54, .28, 4), tombM);
-  cap.position.y = .16+h+.12; cap.rotation.y = Math.PI/4; cap.scale.z = d/w;
-  cap.castShadow = cap.receiveShadow = true; g.add(cap);
+  const body = new THREE.Mesh(archedTombGeometry(w, h, d), tombM);
+  body.position.y = .16; body.castShadow = body.receiveShadow = true; g.add(body);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(.018, h*.54, .012), carvingM);
+  const right = left.clone();
+  left.position.set(-w*.32, .16+h*.38, d/2+.012);
+  right.position.set(w*.32, .16+h*.38, d/2+.012);
+  g.add(left, right);
   for (let i=0;i<3;i++){
-    const line = new THREE.Mesh(new THREE.BoxGeometry(w*.42, .018, .01), carvingM);
-    line.position.set(0, .16+h*(.62-i*.12), d/2+.006);
+    const line = new THREE.Mesh(new THREE.BoxGeometry(w*(special ? .5 : .38), .018, .012), carvingM);
+    line.position.set(0, .16+h*(.52-i*.11), d/2+.012);
     g.add(line);
   }
   g.position.set(x, 0, z);
-  g.rotation.y = (Math.random()-.5)*.5; g.rotation.z = (Math.random()-.5)*.04;
+  g.rotation.y = (faceYaw ?? 0) + (Math.random()-.5)*.18;
+  g.rotation.z = (Math.random()-.5)*.035;
   scene.add(g);
   if (special){
     for (let i=0;i<7;i++){
@@ -209,30 +255,37 @@ function tombstone(x,z,special){
   }
   return g;
 }
-for (let i=0;i<26;i++){
+for (let i=0;i<22;i++){
   const t = .1+ .8*rnd(), p = curve.getPoint(t), tg = curve.getTangent(t);
-  const n = new THREE.Vector3(-tg.z,0,tg.x);
+  const n = new THREE.Vector3(-tg.z,0,tg.x).normalize();
   const side = rnd()>.5?1:-1, off = 3+rnd()*7;
-  tombs.push(tombstone(p.x+n.x*off*side, p.z+n.z*off*side, false));
+  const x = p.x+n.x*off*side, z = p.z+n.z*off*side;
+  if (Math.hypot(x, z+52) < 20) continue;
+  const faceYaw = Math.atan2(p.x-x, p.z-z);
+  tombs.push(tombstone(x, z, false, faceYaw));
 }
-const special = tombstone(...(()=>{ const p=curve.getPoint(.45), tg=curve.getTangent(.45);
-  return [p.x-tg.z*2.1, p.z+tg.x*2.1]; })(), true);
+const specialPose = (()=>{ const p=curve.getPoint(.45), tg=curve.getTangent(.45);
+  return { x:p.x-tg.z*2.1, z:p.z+tg.x*2.1, yaw:Math.atan2(tg.z, -tg.x) }; })();
+const special = tombstone(specialPose.x, specialPose.z, true, specialPose.yaw);
 const blueL = new THREE.PointLight(0x2E6BA8, 0, 8, 1.6);
 blueL.position.set(special.position.x, 1.3, special.position.z); scene.add(blueL);
 
 // ---------- 路灯 ----------
 const lamps = [];
-[.18,.5,.82].forEach(t=>{
+const lampBodyM = new THREE.MeshStandardMaterial({ color:0x29251F, roughness:.8, flatShading:true });
+const lampGlowM = new THREE.MeshStandardMaterial({ color:0xD6B16E, emissive:0xD6B16E, emissiveIntensity:0, transparent:true, opacity:.92 });
+[.08,.18,.29,.4,.52,.64,.76,.88].forEach((t,i)=>{
   const p = curve.getPoint(t), tg = curve.getTangent(t);
-  const x = p.x + -tg.z*2.4, z = p.z + tg.x*2.4;
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.06,.09,3.6,6),
-    new THREE.MeshStandardMaterial({ color:0x2a2620, flatShading:true }));
-  pole.position.set(x,1.8,z); pole.castShadow = true; scene.add(pole);
-  const head = new THREE.Mesh(new THREE.BoxGeometry(.34,.42,.34),
-    new THREE.MeshStandardMaterial({ color:0xD6B16E, emissive:0xD6B16E, emissiveIntensity:0 }));
-  head.position.set(x,3.7,z); scene.add(head);
-  const light = new THREE.PointLight(0xE8B96E, 0, 16, 1.8);
-  light.position.set(x,3.6,z); scene.add(light);
+  const side = i%2 ? 1 : -1;
+  const x = p.x + -tg.z*(1.85+Math.random()*.55)*side, z = p.z + tg.x*(1.85+Math.random()*.55)*side;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(.22,.28,.12,6), lampBodyM);
+  base.position.set(x,.08,z); base.castShadow = true; scene.add(base);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(.34,.5,.34), lampGlowM.clone());
+  head.position.set(x,.45,z); head.rotation.y = Math.PI/4; scene.add(head);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(.34,.18,4), lampBodyM);
+  roof.position.set(x,.8,z); roof.rotation.y = Math.PI/4; roof.castShadow = true; scene.add(roof);
+  const light = new THREE.PointLight(0xE8B96E, 0, 8.5, 1.9);
+  light.position.set(x,.62,z); scene.add(light);
   lamps.push({ head, light });
 });
 
