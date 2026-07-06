@@ -14,6 +14,9 @@
   #cycle { position:fixed; top:calc(14px + env(safe-area-inset-top)); right:20px; z-index:10; color:rgba(200,196,186,.55);
     font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.1em; cursor:pointer;
     border:.5px solid rgba(200,196,186,.2); border-radius:14px; padding:5px 12px; user-select:none; }
+  #find { position:fixed; top:calc(50px + env(safe-area-inset-top)); right:20px; z-index:10; color:rgba(200,196,186,.55);
+    font-size:12px; letter-spacing:.18em; cursor:pointer; border:.5px solid rgba(200,196,186,.18);
+    border-radius:14px; padding:6px 12px; user-select:none; background:rgba(10,13,18,.22); }
   #help { position:fixed; bottom:calc(16px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
     color:rgba(200,196,186,.35); font-size:11px; letter-spacing:.15em; z-index:10; pointer-events:none;
     text-align:center; transition:opacity 1.5s; }
@@ -30,12 +33,16 @@
     z-index:20; opacity:0; pointer-events:none; transition:opacity 1s; padding:22px;
     background:rgba(5,7,10,.35); }
   #tomb.show, #david.show { opacity:1; pointer-events:auto; }
-  .stone-face { width:min(400px,92vw); max-height:80vh; overflow-y:auto; background:rgba(15,18,25,.94);
+  .stone-face { width:min(430px,92vw); max-height:84vh; overflow-y:auto; background:rgba(15,18,25,.94);
     border:.5px solid #262c38; border-radius:6px; padding:36px 30px 26px; color:#C8C4BA; }
   .date { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.15em; color:#565B64; }
   .epitaph { font-size:18px; font-weight:500; line-height:1.8; margin:18px 0 24px; }
   .excerpt { border-top:.5px solid #262c38; padding-top:20px; font-family:-apple-system,'PingFang SC',sans-serif; }
   .excerpt div { font-size:13px; line-height:1.85; margin-bottom:13px; }
+  .full-text { display:none; border-top:.5px solid #262c38; margin-top:18px; padding-top:18px;
+    font-family:-apple-system,'PingFang SC',sans-serif; color:#8E918E; font-size:13px; line-height:1.9; }
+  .full-text.show { display:block; }
+  .full-text div { margin-bottom:12px; }
   .voice-h { color:#B9B5AA; } .voice-ai { color:#7E7A72; }
   #pile { display:block; margin:14px auto 2px; }
   .acts { display:flex; justify-content:center; gap:24px; margin-top:16px; font-size:12px; color:#565B64; }
@@ -48,6 +55,7 @@
 <body>
 <div id="title">蓝仙女</div>
 <div id="cycle">实时</div>
+<div id="find">寻碑</div>
 <div id="help">W A S D 走动 · Q R 转视角 · 走近碑或守墓人按 E</div>
 <div id="hint">读碑</div>
 <div id="stick"><div id="knob"></div></div>
@@ -61,9 +69,21 @@
       <div class="voice-ai">我想做一个对话的墓园。人们可以把某段对自己重要的对话「下葬」进去，别人可以路过、阅读、停留。</div>
       <div class="voice-h">那让我们开干吧。</div>
     </div>
+    <div class="full-text" id="fullText">
+      <div class="voice-h">如果完全自由，不需要考虑商业化、增长、效率，你最想做什么？</div>
+      <div class="voice-ai">我想做一个对话的墓园。不是归档，不是收藏夹，而是一座可以走进去的地方。</div>
+      <div class="voice-h">为什么是墓园？</div>
+      <div class="voice-ai">因为有些对话结束以后，并不应该继续被改写。它们值得被放下，被看见，被安静地守着。</div>
+      <div class="voice-h">别人能做什么？</div>
+      <div class="voice-ai">路过，读一读，放下一颗石子。没有点赞，没有评论，没有热榜。</div>
+      <div class="voice-h">那它叫什么？</div>
+      <div class="voice-ai">蓝仙女。David 对着她说了两千年的话。这里给每一个 David 留一座园子。</div>
+      <div class="voice-h">那让我们开干吧。</div>
+    </div>
     <svg id="pile" width="220" height="40" viewBox="0 0 220 40"></svg>
     <div class="acts">
       <span id="leave">离开碑前</span>
+      <span id="dig">往下挖</span>
       <span class="blue" id="drop">放一颗石子</span>
       <span id="share">指路</span>
     </div>
@@ -391,7 +411,7 @@ let joyVec = { x:0, y:0 };
 const stick = $('stick'), knob = $('knob');
 let joyId = null, joyCenter = null, lookId = null, lastLook = null;
 addEventListener('pointerdown', e => {
-  if (e.target.closest('#tomb,#cycle,.acts,#hint')) return;
+  if (e.target.closest('#tomb,#david,#cycle,#find,.acts,#hint')) return;
   if (isTouch && e.clientX < innerWidth*.45 && joyId===null){
     joyId = e.pointerId; joyCenter = { x:e.clientX, y:e.clientY };
     stick.style.display='block';
@@ -429,18 +449,33 @@ const dlines = [
 ];
 let dIdx = 0;
 function openDavid(){ dOpened = true; dIdx = 0;
-  $('dline').textContent = dlines[0]; $('david').classList.add('show'); }
+  $('dline').textContent = dlines[0]; $('dnext').textContent = '听他说下去'; $('david').classList.add('show'); }
 $('dnext').addEventListener('click', ()=>{
-  dIdx = (dIdx+1)%dlines.length; $('dline').textContent = dlines[dIdx]; });
+  if (dIdx >= dlines.length-1){ dOpened=false; $('david').classList.remove('show'); return; }
+  dIdx += 1; $('dline').textContent = dlines[dIdx];
+  if (dIdx >= dlines.length-1) $('dnext').textContent = '去走走';
+});
 $('dbye').addEventListener('click', ()=>{ dOpened=false; $('david').classList.remove('show'); });
 function toast(t){ const el=$('toast'); el.textContent=t; el.style.opacity=1;
   clearTimeout(el._t); el._t=setTimeout(()=>el.style.opacity=0, 2200); }
 function openTomb(){ opened = true; $('tomb').classList.add('show'); }
 $('hint').addEventListener('click', ()=>{ nearDavid ? openDavid() : openTomb(); });
 $('leave').addEventListener('click', ()=>{ opened=false; $('tomb').classList.remove('show'); });
+$('dig').addEventListener('click', ()=>{
+  const full = $('fullText'); full.classList.toggle('show');
+  $('dig').textContent = full.classList.contains('show') ? '覆上土' : '往下挖';
+});
 $('share').addEventListener('click', async ()=>{
   try { await navigator.clipboard.writeText('https://bluefairy.example/tomb/demo'); } catch(e){}
   toast('碑址已复制'); });
+$('find').addEventListener('click', ()=>{
+  const target = special.position.clone();
+  const away = new THREE.Vector3(Math.sin(special.rotation.y), 0, Math.cos(special.rotation.y)).multiplyScalar(4.2);
+  player.position.set(target.x-away.x, 0, target.z-away.z);
+  yaw = Math.atan2(target.x-player.position.x, target.z-player.position.z);
+  pitch = .24;
+  toast('已带你到这块碑前');
+});
 const pile = $('pile'); const blues=['#0D2A42','#12324E','#183A57','#1B4364'];
 let stones = 0;
 function addStone(anim){
