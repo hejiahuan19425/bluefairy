@@ -1,0 +1,115 @@
+:root {
+  color-scheme: dark;
+  --bg: #0a0d12;
+  --ink: #c8c4ba;
+  --muted: #777b84;
+  --line: #252b35;
+  --lamp: #d6b16e;
+  --blue: #1b4364;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-serif, "Noto Serif SC", "Songti SC", serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+}
+
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(214, 177, 110, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(18, 50, 78, 0.18), transparent 48%),
+    var(--bg);
+}
+
+.threshold {
+  width: min(680px, 100%);
+  text-align: center;
+}
+
+.kicker {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font: 12px/1.6 ui-monospace, "JetBrains Mono", monospace;
+  letter-spacing: 0.14em;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(36px, 8vw, 78px);
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+}
+
+.summary {
+  max-width: 520px;
+  margin: 22px auto 0;
+  color: rgba(200, 196, 186, 0.72);
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 44px;
+}
+
+.action {
+  min-width: 136px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 18px;
+  color: var(--ink);
+  background: rgba(15, 18, 25, 0.54);
+}
+
+.action.primary {
+  border-color: rgba(214, 177, 110, 0.44);
+  color: #ead7aa;
+}
+
+.small-links {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 34px;
+  color: rgba(200, 196, 186, 0.42);
+  font-size: 12px;
+}
+
+.garden-shell {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.garden-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
