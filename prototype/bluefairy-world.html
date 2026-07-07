@@ -56,7 +56,7 @@
 <div id="title">蓝仙女</div>
 <div id="cycle">实时</div>
 <div id="find">寻碑</div>
-<div id="help">W A S D 走动 · Q R 转视角 · 走近碑或守墓人按 E</div>
+<div id="help">W A S D 走动 · Q / 1 转视角 · 走近碑或守墓人按 E</div>
 <div id="hint">读碑</div>
 <div id="stick"><div id="knob"></div></div>
 
@@ -329,20 +329,32 @@ scene.add(player);
 
 // ---------- 守墓人 David ----------
 const david = new THREE.Group();
-const dcloak = new THREE.Mesh(new THREE.ConeGeometry(.4,1.15,7),
-  new THREE.MeshStandardMaterial({ color:0x2B333F, flatShading:true }));
-dcloak.position.y = .58; dcloak.castShadow = true;
-const dhood = new THREE.Mesh(new THREE.ConeGeometry(.23,.42,7),
-  new THREE.MeshStandardMaterial({ color:0x242C36, flatShading:true }));
-dhood.position.y = 1.26;
-const lantern = new THREE.Mesh(new THREE.BoxGeometry(.14,.18,.14),
-  new THREE.MeshStandardMaterial({ color:0xD6B16E, emissive:0xD6B16E, emissiveIntensity:.9 }));
-lantern.position.set(.42,.62,0);
-const lanternL = new THREE.PointLight(0xE8B96E, 1.2, 7, 1.8);
-lanternL.position.set(.42,.7,0);
-david.add(dcloak, dhood, lantern, lanternL);
-(()=>{ const p=curve.getPoint(.68), tg=curve.getTangent(.68);
-  david.position.set(p.x-tg.z*1.8, 0, p.z+tg.x*1.8); })();
+const keeperCloakM = new THREE.MeshStandardMaterial({ color:0x586BA8, emissive:0x17213F, emissiveIntensity:.16, flatShading:true });
+const keeperHoodM = new THREE.MeshStandardMaterial({ color:0x2E3E72, emissive:0x10182F, emissiveIntensity:.14, flatShading:true });
+const keeperGoldM = new THREE.MeshStandardMaterial({ color:0xD4B06D, emissive:0x4A3212, emissiveIntensity:.16, flatShading:true });
+const dcloak = new THREE.Mesh(new THREE.ConeGeometry(.52,1.62,7), keeperCloakM);
+dcloak.position.y = .82; dcloak.castShadow = true;
+const dhood = new THREE.Mesh(new THREE.ConeGeometry(.32,.56,7), keeperHoodM);
+dhood.position.y = 1.74; dhood.castShadow = true;
+const dtrim = new THREE.Mesh(new THREE.TorusGeometry(.32,.026,5,14), keeperGoldM);
+dtrim.rotation.x = Math.PI/2; dtrim.position.y = 1.42; dtrim.castShadow = true;
+const staff = new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,1.7,6), keeperGoldM);
+staff.position.set(-.5,.86,.02); staff.rotation.z = -.12; staff.castShadow = true;
+const staffTop = new THREE.Mesh(new THREE.SphereGeometry(.09,10,10),
+  new THREE.MeshStandardMaterial({ color:0xB7D7FF, emissive:0x7EB7FF, emissiveIntensity:1.2 }));
+staffTop.position.set(-.6,1.68,.02);
+const lantern = new THREE.Mesh(new THREE.BoxGeometry(.18,.24,.18),
+  new THREE.MeshStandardMaterial({ color:0xF3CB82, emissive:0xF3CB82, emissiveIntensity:1.35 }));
+lantern.position.set(.52,.8,0);
+const lanternL = new THREE.PointLight(0xF0C175, 2.2, 9, 1.6);
+lanternL.position.set(.52,.88,0);
+const staffL = new THREE.PointLight(0x7EB7FF, .9, 5, 1.8);
+staffL.position.copy(staffTop.position);
+david.add(dcloak, dhood, dtrim, staff, staffTop, lantern, lanternL, staffL);
+(()=>{ const p=curve.getPoint(.13), tg=curve.getTangent(.13);
+  david.position.set(p.x-tg.z*3.1, 0, p.z+tg.x*3.1);
+  david.rotation.y = Math.atan2(player.position.x-david.position.x, player.position.z-david.position.z);
+})();
 scene.add(david);
 
 // ---------- 光照与昼夜 ----------
@@ -404,12 +416,13 @@ function keyNames(e){
   if (e.code && e.code.startsWith('Key')) names.add(e.code.slice(3).toLowerCase());
   if (e.key) names.add(e.key.toLowerCase());
   if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') names.add('q');
-  if (e.code === 'ArrowRight' || e.key === 'ArrowRight') names.add('r');
+  if (e.code === 'ArrowRight' || e.key === 'ArrowRight') names.add('turnRight');
+  if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') names.add('turnRight');
   return [...names];
 }
 addEventListener('keydown', e => {
   const names = keyNames(e);
-  if (names.some(k => 'wasdqre'.includes(k))) e.preventDefault();
+  if (names.some(k => ['w','a','s','d','q','e','turnRight'].includes(k))) e.preventDefault();
   names.forEach(k => keys[k] = true);
   const k = names[0];
   if (k==='e'){ if (nearDavid) openDavid(); else if (nearTomb) openTomb(); }
@@ -525,7 +538,7 @@ function frame(){
   let mz = (keys.s?1:0)-(keys.w?1:0) + joyVec.y;
   const mlen = Math.hypot(mx,mz);
   const turnLeft = keys.q ? 1 : 0;
-  const turnRight = keys.r ? 1 : 0;
+  const turnRight = keys.turnRight ? 1 : 0;
   yaw += (turnLeft - turnRight) * dt * 1.9;
   if (mlen > 0 && !opened && !dOpened){
     mx/=Math.max(1,mlen); mz/=Math.max(1,mlen);
