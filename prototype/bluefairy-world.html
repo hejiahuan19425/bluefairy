@@ -290,8 +290,45 @@ for (let i=0;i<22;i++){
 const specialPose = (()=>{ const p=curve.getPoint(.45), tg=curve.getTangent(.45);
   return { x:p.x-tg.z*2.1, z:p.z+tg.x*2.1, yaw:Math.atan2(tg.z, -tg.x) }; })();
 const special = tombstone(specialPose.x, specialPose.z, true, specialPose.yaw);
+const tombFaceGlowM = new THREE.MeshBasicMaterial({
+  color:0xF5D88F, transparent:true, opacity:0, depthWrite:false, blending:THREE.AdditiveBlending
+});
+const tombFaceGlow = new THREE.Mesh(new THREE.PlaneGeometry(.68, 1.04), tombFaceGlowM);
+tombFaceGlow.position.set(0, .98, .166);
+special.add(tombFaceGlow);
 const blueL = new THREE.PointLight(0x2E6BA8, 0, 8, 1.6);
 blueL.position.set(special.position.x, 1.3, special.position.z); scene.add(blueL);
+const tombGlowL = new THREE.PointLight(0xF0C175, 0, 7, 1.7);
+tombGlowL.position.set(special.position.x, 1.05, special.position.z+.18); scene.add(tombGlowL);
+const tombHaloM = new THREE.MeshBasicMaterial({
+  color:0xEFC57A, transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending
+});
+const tombHalo = new THREE.Mesh(new THREE.RingGeometry(.55, 1.65, 36), tombHaloM);
+tombHalo.rotation.x = -Math.PI/2;
+tombHalo.position.set(special.position.x, .055, special.position.z+.26);
+scene.add(tombHalo);
+const fireflyG = new THREE.Group();
+fireflyG.position.set(special.position.x, .15, special.position.z);
+fireflyG.rotation.y = special.rotation.y;
+scene.add(fireflyG);
+const fireflyGeo = new THREE.SphereGeometry(.018, 8, 8);
+const fireflyM = new THREE.MeshBasicMaterial({
+  color:0xFFF0A8, transparent:true, opacity:0, depthWrite:false, blending:THREE.AdditiveBlending
+});
+for (let i=0;i<22;i++){
+  const f = new THREE.Mesh(fireflyGeo, fireflyM);
+  const side = i%2 ? 1 : -1;
+  f.userData = {
+    side,
+    x: side*(.55 + (i%5)*.16),
+    z: -.15 + (i%4)*.16,
+    h: .68 + (i%5)*.18,
+    s: .75 + (i%4)*.14,
+    speed: .45 + (i%7)*.07,
+    seed: i*1.91
+  };
+  fireflyG.add(f);
+}
 
 // ---------- 路灯 ----------
 const lamps = [];
@@ -530,6 +567,32 @@ $('drop').addEventListener('click', ()=>{
 // ---------- 主循环 ----------
 const clock = new THREE.Clock();
 let walkPhase = 0;
+function updateTombGlow(t, wake, target){
+  const eased = wake*wake*(3-2*wake);
+  if (target){
+    const p = target.position;
+    const front = new THREE.Vector3(Math.sin(target.rotation.y), 0, Math.cos(target.rotation.y));
+    tombGlowL.position.set(p.x+front.x*.28, 1.05, p.z+front.z*.28);
+    tombHalo.position.set(p.x+front.x*.26, .055, p.z+front.z*.26);
+    tombHalo.rotation.set(-Math.PI/2, 0, 0);
+    fireflyG.position.set(p.x, .15, p.z);
+    fireflyG.rotation.y = target.rotation.y;
+  }
+  tombGlowL.intensity = eased*2.25;
+  tombGlowL.distance = 5 + eased*3;
+  tombFaceGlowM.opacity = target === special ? eased*.28 : 0;
+  tombFaceGlow.scale.setScalar(1 + Math.sin(t*2.1)*.025*eased);
+  tombHaloM.opacity = eased*.32;
+  tombHalo.scale.setScalar(1 + Math.sin(t*1.7)*.035*eased);
+  fireflyG.visible = eased > .02;
+  fireflyM.opacity = eased*.72;
+  fireflyG.children.forEach(f => {
+    const u = f.userData;
+    const sway = Math.sin(t*u.speed+u.seed)*.13;
+    f.position.set(u.x+sway, u.h+Math.sin(t*1.7+u.seed)*.14, u.z+Math.cos(t*.8+u.seed)*.12);
+    f.scale.setScalar(u.s*(.65+eased*.55)*(1+Math.sin(t*4.2+u.seed)*.18));
+  });
+}
 function frame(){
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), .05);
@@ -565,6 +628,12 @@ function frame(){
 
   const dTomb = player.position.distanceTo(special.position);
   nearTomb = dTomb < 3.2;
+  let glowTarget = special, glowDist = dTomb;
+  tombs.forEach(tomb => {
+    const d = player.position.distanceTo(tomb.position);
+    if (d < glowDist){ glowDist = d; glowTarget = tomb; }
+  });
+  const tombWake = opened ? 1 : Math.max(0, Math.min(1, (6.2-glowDist)/3.4));
   const dDav = player.position.distanceTo(david.position);
   nearDavid = dDav < 3.6;
   if (dDav < 8) david.rotation.y = Math.atan2(
@@ -575,9 +644,11 @@ function frame(){
   if (!nearDavid && dOpened){ dOpened=false; $('david').classList.remove('show'); }
 
   applySky(daylight());
+  updateTombGlow(clock.elapsedTime, tombWake, glowTarget);
   renderer.render(scene, camera);
 }
 applySky(daylight());
+updateTombGlow(0, 0, special);
 frame();
 addEventListener('resize', ()=>{
   camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
