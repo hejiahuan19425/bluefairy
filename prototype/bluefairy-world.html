@@ -56,7 +56,7 @@
 <div id="title">蓝仙女</div>
 <div id="cycle">实时</div>
 <div id="find">寻碑</div>
-<div id="help">W A S D 走动 · Q / 1 转视角 · 走近碑或守墓人按 E</div>
+<div id="help">W A S D 走动 · Q / E 转视角 · 走近碑或守墓人按 F</div>
 <div id="hint">读碑</div>
 <div id="stick"><div id="knob"></div></div>
 
@@ -454,15 +454,15 @@ function keyNames(e){
   if (e.key) names.add(e.key.toLowerCase());
   if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') names.add('q');
   if (e.code === 'ArrowRight' || e.key === 'ArrowRight') names.add('turnRight');
-  if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') names.add('turnRight');
+  if (e.code === 'KeyE' || e.key === 'e' || e.key === 'E') names.add('turnRight');
   return [...names];
 }
 addEventListener('keydown', e => {
   const names = keyNames(e);
-  if (names.some(k => ['w','a','s','d','q','e','turnRight'].includes(k))) e.preventDefault();
+  if (names.some(k => ['w','a','s','d','q','e','f','turnRight'].includes(k))) e.preventDefault();
   names.forEach(k => keys[k] = true);
   const k = names[0];
-  if (k==='e'){ if (nearDavid) openDavid(); else if (nearTomb) openTomb(); }
+  if (k==='f'){ if (nearDavid) openDavid(); else if (nearTomb) openTomb(); }
 });
 addEventListener('keyup', e => keyNames(e).forEach(k => keys[k] = false));
 
