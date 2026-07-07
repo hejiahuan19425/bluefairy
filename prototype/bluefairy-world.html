@@ -530,10 +530,10 @@ $('share').addEventListener('click', async ()=>{
   toast('碑址已复制'); });
 $('find').addEventListener('click', ()=>{
   const target = special.position.clone();
-  const away = new THREE.Vector3(Math.sin(special.rotation.y), 0, Math.cos(special.rotation.y)).multiplyScalar(4.2);
+  const away = new THREE.Vector3(Math.sin(special.rotation.y), 0, Math.cos(special.rotation.y)).multiplyScalar(5.6);
   player.position.set(target.x-away.x, 0, target.z-away.z);
   yaw = Math.atan2(target.x-player.position.x, target.z-player.position.z);
-  pitch = .24;
+  pitch = .18;
   toast('已带你到这块碑前');
 });
 const pile = $('pile'); const blues=['#0D2A42','#12324E','#183A57','#1B4364'];
@@ -602,11 +602,11 @@ function frame(){
   const mlen = Math.hypot(mx,mz);
   const turnLeft = keys.q ? 1 : 0;
   const turnRight = keys.turnRight ? 1 : 0;
-  yaw += (turnLeft - turnRight) * dt * 1.9;
+  yaw += (turnLeft - turnRight) * dt * 1.65;
   if (mlen > 0 && !opened && !dOpened){
     mx/=Math.max(1,mlen); mz/=Math.max(1,mlen);
     const dir = new THREE.Vector3(mx,0,mz).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
-    player.position.addScaledVector(dir, dt*5.2);
+    player.position.addScaledVector(dir, dt*4.8);
     player.position.x = Math.max(-150, Math.min(150, player.position.x));
     player.position.z = Math.max(-150, Math.min(150, player.position.z));
     const hd = Math.hypot(player.position.x, player.position.z+52);
@@ -620,11 +620,11 @@ function frame(){
     cloak.scale.y = 1+Math.sin(walkPhase*2)*.03;
   }
 
-  const cd = 5.2, ch = 1.6 + pitch*3.4;
+  const cd = 6.2, ch = 1.85 + pitch*3.2;
   const cx = player.position.x + Math.sin(yaw)*cd;
   const cz = player.position.z + Math.cos(yaw)*cd;
-  camera.position.lerp(new THREE.Vector3(cx, player.position.y+ch, cz), Math.min(1, dt*5));
-  camera.lookAt(player.position.x, player.position.y+1, player.position.z);
+  camera.position.lerp(new THREE.Vector3(cx, player.position.y+ch, cz), Math.min(1, dt*4.2));
+  camera.lookAt(player.position.x, player.position.y+1.08, player.position.z);
 
   const dTomb = player.position.distanceTo(special.position);
   nearTomb = dTomb < 3.2;
