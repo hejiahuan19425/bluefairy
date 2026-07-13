@@ -6,16 +6,31 @@
 
 - M0 已完成：产品设计、美术资产、Three.js 可行走原型、施工计划。
 - 项目接手整理已完成：Next.js 骨架可运行、文档入口清楚、Git 状态干净。
-- M1 世界打磨进行中：当前重点是把入园、走路、遇见碑的手感立住，不急着堆功能。
+- M1 未收口，正在按 2026-07-13 复审意见修正。任何里程碑收口前必须逐条核对 devplan 检查表，未完成项如实列出。
 
-## M1 原型进展
+## M1 复审修正
 
-- 坚定采用 Three.js 真 3D；当前原型入口为 `/prototype/bluefairy-world`。
-- 已有可行走墓园、石板路、夜景/白昼切换、守墓人 David、一号对话碑、寻碑入口。
-- 一号碑支持节选阅读、往下挖全文、放石子、指路。
-- 靠近墓碑时，最近的碑会出现暖光与萤火；一号碑会额外点亮碑面。
-- 守墓人已在入园路径旁出现，形象与普通路灯/墓碑区分开。
-- 当前键位：`W A S D` 走动，`Q / E` 转视角，靠近碑或守墓人按 `F`。
+- 已完成：`/prototype/bluefairy-world` 由 Next route 承载 HTML，Three.js 与原型脚本构建为本地 bundle，不再使用 CDN importmap。
+- 已完成：树与普通碑改为 `InstancedMesh` 合批；一号碑保留独立对象以支持交互发光。
+- 已完成：玩家与树干、普通碑、一号碑、David 的圆柱碰撞体，不可直接穿透。
+- 已完成：丘坡高度改为从实际丘体向下采样，不再沿用距离数学近似。
+- 已完成：碑总量控制为 14 块普通碑 + 1 块一号碑，并拉开深林留白。
+- 已完成：待机呼吸感、David 深蓝灰配色回调、一号碑全文 placeholder 标注。
+- 未完成：真实 Freesound CC0 环境音素材接入。Freesound 原始下载需要登录，不能用合成音或非 CC0 素材替代。
+- 未完成：微信内置浏览器真机实测。当前已移除 importmap 风险，但仍需要真机给出“直接可用 / 需改打包 / 需降级”的结论。
+
+## 需要产品方补的素材
+
+请登录 Freesound 下载并放入 `assets/audio/`，文件名建议如下：
+
+- `day-birds-wind.mp3`：birds and wind.mp3 by swhic，Creative Commons 0  
+  https://freesound.org/people/swhic/sounds/349175/
+- `night-forest.wav`：NC Night Forest.wav by Lasdimot，Creative Commons 0  
+  https://freesound.org/people/Lasdimot/sounds/405515/
+- `day-cicadas-wind-birds.wav`：CICADAS - LIGHT WIND - BIRDS CATALUNYA - SPAIN by Juno24，Creative Commons 0  
+  https://freesound.org/people/Juno24/sounds/845256/
+
+素材到位后再做昼夜双音景淡入淡出和常驻静音开关。
 
 ## 开发
 
@@ -26,7 +41,10 @@ npm run dev
 
 打开 `http://localhost:3000`。如果 3000 端口被占用，可换端口运行，例如 `npm run dev -- -p 3001`。
 
-当前 `/prototype/bluefairy-world` 会通过 Next.js 路由承载 `prototype/bluefairy-world.html`。M1 收口后，再把原型逐步拆成可维护的 Garden 类和资源管线。
+当前原型入口：
+
+- 本地：`/prototype/bluefairy-world`
+- 线上：https://bluefairy.vercel.app/prototype/bluefairy-world
 
 ## 阅读顺序
 
