@@ -14,9 +14,11 @@
   #cycle { position:fixed; top:calc(14px + env(safe-area-inset-top)); right:20px; z-index:10; color:rgba(200,196,186,.55);
     font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.1em; cursor:pointer;
     border:.5px solid rgba(200,196,186,.2); border-radius:14px; padding:5px 12px; user-select:none; }
-  #find { position:fixed; top:calc(50px + env(safe-area-inset-top)); right:20px; z-index:10; color:rgba(200,196,186,.55);
+  #find, #sound { position:fixed; top:calc(50px + env(safe-area-inset-top)); right:20px; z-index:10; color:rgba(200,196,186,.55);
     font-size:12px; letter-spacing:.18em; cursor:pointer; border:.5px solid rgba(200,196,186,.18);
     border-radius:14px; padding:6px 12px; user-select:none; background:rgba(10,13,18,.22); }
+  #sound { top:calc(86px + env(safe-area-inset-top)); }
+  #sound.on { color:rgba(126,183,255,.78); border-color:rgba(126,183,255,.28); }
   #help { position:fixed; bottom:calc(16px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
     color:rgba(200,196,186,.35); font-size:11px; letter-spacing:.15em; z-index:10; pointer-events:none;
     text-align:center; transition:opacity 1.5s; }
@@ -56,6 +58,7 @@
 <div id="title">蓝仙女</div>
 <div id="cycle">实时</div>
 <div id="find">寻碑</div>
+<div id="sound">静音</div>
 <div id="help">W A S D 走动 · Q / E 转视角 · 走近碑或守墓人按 F</div>
 <div id="hint">读碑</div>
 <div id="stick"><div id="knob"></div></div>

@@ -429,6 +429,46 @@ function applySky(dl){
   lamps.forEach(({head,light})=>{ light.intensity = lampI*4.6; head.material.emissiveIntensity = lampI*1.6; });
 }
 
+const ambience = {
+  enabled: false,
+  unlocked: false,
+  night: new Audio('/audio/night-forest.mp3')
+};
+ambience.night.loop = true;
+ambience.night.preload = 'auto';
+ambience.night.volume = 0;
+
+function updateSoundButton(){
+  $('sound').textContent = ambience.enabled ? '有声' : '静音';
+  $('sound').classList.toggle('on', ambience.enabled);
+}
+async function startAmbience(){
+  try {
+    if (!ambience.unlocked){
+      await ambience.night.play();
+      ambience.unlocked = true;
+    } else if (ambience.night.paused){
+      await ambience.night.play();
+    }
+  } catch {
+    ambience.enabled = false;
+    updateSoundButton();
+    toast('浏览器拦住了声音，请再点一次');
+  }
+}
+function updateAmbience(dl, dt){
+  const target = ambience.enabled ? Math.max(0, Math.min(.46, (1-dl*1.25)*.46)) : 0;
+  if (target > .01 && ambience.night.paused) ambience.night.play().catch(()=>{});
+  ambience.night.volume += (target - ambience.night.volume) * Math.min(1, dt*1.8);
+  if (ambience.night.volume < .005 && target === 0 && !ambience.night.paused) ambience.night.pause();
+}
+$('sound').addEventListener('click', ()=>{
+  ambience.enabled = !ambience.enabled;
+  updateSoundButton();
+  if (ambience.enabled) startAmbience();
+});
+updateSoundButton();
+
 // ---------- 控制 ----------
 const keys = {};
 function keyNames(e){
@@ -454,7 +494,7 @@ let joyVec = { x:0, y:0 };
 const stick = $('stick'), knob = $('knob');
 let joyId = null, joyCenter = null, lookId = null, lastLook = null;
 addEventListener('pointerdown', e => {
-  if (e.target.closest('#tomb,#david,#cycle,#find,.acts,#hint')) return;
+  if (e.target.closest('#tomb,#david,#cycle,#find,#sound,.acts,#hint')) return;
   if (isTouch && e.clientX < innerWidth*.45 && joyId===null){
     joyId = e.pointerId; joyCenter = { x:e.clientX, y:e.clientY };
     stick.style.display='block';
@@ -653,7 +693,9 @@ function frame(){
   if (!nearTomb && opened){ opened=false; $('tomb').classList.remove('show'); }
   if (!nearDavid && dOpened){ dOpened=false; $('david').classList.remove('show'); }
 
-  applySky(daylight());
+  const dl = daylight();
+  applySky(dl);
+  updateAmbience(dl, dt);
   updateTombGlow(clock.elapsedTime, tombWake, glowTarget);
   renderer.render(scene, camera);
 }

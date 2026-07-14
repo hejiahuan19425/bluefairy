@@ -25,6 +25,7 @@
     "esbuild": "^0.28.1",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.10",
+    "lamejs": "^1.2.1",
     "typescript": "^6.0.3"
   },
   "overrides": {

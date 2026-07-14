@@ -8,3 +8,7 @@ dist/
 vercel.json
 
 .vercel
+assets/audio/*.wav
+assets/audio/*.mp3
+assets/audio/*.ogg
+assets/audio/*.m4a

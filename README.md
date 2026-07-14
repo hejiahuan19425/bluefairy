@@ -16,21 +16,19 @@
 - 已完成：丘坡高度改为从实际丘体向下采样，不再沿用距离数学近似。
 - 已完成：碑总量控制为 14 块普通碑 + 1 块一号碑，并拉开深林留白。
 - 已完成：待机呼吸感、David 深蓝灰配色回调、一号碑全文 placeholder 标注。
-- 未完成：真实 Freesound CC0 环境音素材接入。Freesound 原始下载需要登录，不能用合成音或非 CC0 素材替代。
-- 未完成：微信内置浏览器真机实测。当前已移除 importmap 风险，但仍需要真机给出“直接可用 / 需改打包 / 需降级”的结论。
+- 部分完成：真实 Freesound CC0 夜林音景已接入，来源为 `NC Night Forest.wav` by Lasdimot；白天鸟鸣/风声仍待素材。
+- 已完成：微信内置浏览器真机实测，2026-07-14 反馈为直接可用。
 
 ## 需要产品方补的素材
 
-请登录 Freesound 下载并放入 `assets/audio/`，文件名建议如下：
+已接入夜晚森林音。白天音景仍需登录 Freesound 下载并放入 `assets/audio/`，文件名建议如下：
 
 - `day-birds-wind.mp3`：birds and wind.mp3 by swhic，Creative Commons 0  
   https://freesound.org/people/swhic/sounds/349175/
-- `night-forest.wav`：NC Night Forest.wav by Lasdimot，Creative Commons 0  
-  https://freesound.org/people/Lasdimot/sounds/405515/
 - `day-cicadas-wind-birds.wav`：CICADAS - LIGHT WIND - BIRDS CATALUNYA - SPAIN by Juno24，Creative Commons 0  
   https://freesound.org/people/Juno24/sounds/845256/
 
-素材到位后再做昼夜双音景淡入淡出和常驻静音开关。
+白天素材到位后再补完整昼夜双音景；当前页面已有常驻静音/有声开关。
 
 ## 开发
 
