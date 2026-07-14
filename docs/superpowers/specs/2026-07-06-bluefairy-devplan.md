@@ -146,3 +146,15 @@ RLS 全开、仅服务端 service key 读写；前端一律走 API routes。
 - Anthropic API key（入园审+夜巡+David）
 - cron-job.org：夜巡定时（GET /api/patrol?secret=…）
 - Feishu webhook（举报与夜巡告警，复用 AI观察 管线）
+
+---
+
+## 追加（2026-07-14 复审后）
+
+**M1 收口小尾巴（M2 开工前补）**：白昼音景第二轨并做完整昼夜淡入淡出。已完成：一号碑仿写全文补回 PLACEHOLDER 标注、待机呼吸感。
+
+**M3 增补**：墓钥卡片图生成（canvas 渲染，含碑址二维码）；「弃钥下葬」选项；POST /api/epitaph 碑文七日一修（挑战-验签，服务端校验 created_at+7d 与修改次数）；excerpt role 宽松化。
+
+**M5 增补**：门口「只是路过」2D 通道与 3D 延迟加载；石子防重从宽实现。
+
+**P1 增补**：AI 下葬 API 文档化 + llms.txt。
