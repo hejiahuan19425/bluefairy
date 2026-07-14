@@ -173,13 +173,13 @@ function archedTombGeometry(w,h,d){
   geo.translate(0, 0, -d/2);
   return geo;
 }
-function tombstone(x,z,special,faceYaw=null){
+function tombstone(x,z,special,faceYaw=null, options={}){
   const h = special? 1.62 : .85+Math.random()*.42;
   const w = special? .92 : .7+Math.random()*.16, d = .3;
   const yaw = (faceYaw ?? 0) + (Math.random()-.5)*.18;
   const lean = (Math.random()-.5)*.035;
   obstacles.push({ x, z, r:special ? 1.05 : .78 });
-  if (!special){
+  if (!special && !options.live){
     const marker = new THREE.Object3D();
     marker.position.set(x, 0, z);
     marker.rotation.y = yaw;
@@ -272,6 +272,7 @@ buildDecoTombInstances();
 const specialPose = (()=>{ const p=curve.getPoint(.45), tg=curve.getTangent(.45);
   return { x:p.x-tg.z*2.1, z:p.z+tg.x*2.1, yaw:Math.atan2(tg.z, -tg.x) }; })();
 const special = tombstone(specialPose.x, specialPose.z, true, specialPose.yaw);
+const readableTombs = [special];
 const tombFaceGlowM = new THREE.MeshBasicMaterial({
   color:0xF5D88F, transparent:true, opacity:0, depthWrite:false, blending:THREE.AdditiveBlending
 });
@@ -310,6 +311,45 @@ for (let i=0;i<22;i++){
     seed: i*1.91
   };
   fireflyG.add(f);
+}
+
+function faceNearestPath(x,z){
+  let best = curve.getPoint(.5), bestD = Infinity;
+  for (let i=0;i<=80;i++){
+    const p = curve.getPoint(i/80);
+    const d = Math.hypot(p.x-x, p.z-z);
+    if (d < bestD){ bestD = d; best = p; }
+  }
+  return Math.atan2(best.x-x, best.z-z);
+}
+function tombFromApi(row){
+  const title = row.kind === 'monologue' ? '独白碑' : '对话碑';
+  return {
+    id: row.id,
+    date: `${String(row.happenedAt || '').replace('-', ' · ')} · ${title}`,
+    epitaph: row.epitaph,
+    excerpt: Array.isArray(row.excerpt) ? row.excerpt : [],
+    fullText: row.fullText || '',
+    publicKey: row.publicKey,
+    stoneCount: row.visitCount || 0
+  };
+}
+async function loadDatabaseTombs(){
+  try {
+    const res = await fetch('/api/tombs', { cache:'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const rows = Array.isArray(data.tombs) ? data.tombs : [];
+    rows.slice(0, 24).forEach(row => {
+      if (!row.world || typeof row.world.x !== 'number' || typeof row.world.z !== 'number') return;
+      const mesh = tombstone(row.world.x, row.world.z, false, faceNearestPath(row.world.x, row.world.z), { live:true });
+      mesh.userData.tombData = tombFromApi(row);
+      mesh.userData.fromDatabase = true;
+      tombs.push(mesh);
+      readableTombs.push(mesh);
+    });
+    if (rows.length) toast(`${Math.min(rows.length, 24)} 块碑从数据库里醒来了`);
+  } catch {}
 }
 
 // ---------- 路灯 ----------
@@ -522,7 +562,25 @@ function endPtr(e){
 addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
 
 // ---------- 碑前交互 ----------
-let nearTomb = false, nearDavid = false, opened = false, dOpened = false, dropped = false;
+let nearTomb = false, nearDavid = false, opened = false, dOpened = false;
+let activeTomb = special;
+const tombDate = document.querySelector('#tomb .date');
+const tombEpitaph = document.querySelector('#tomb .epitaph');
+const tombExcerpt = document.querySelector('#tomb .excerpt');
+const pile = $('pile');
+const blues=['#0D2A42','#12324E','#183A57','#1B4364'];
+let stones = 0;
+const defaultTombData = {
+  id: 'opening-tomb',
+  date: tombDate.textContent,
+  epitaph: tombEpitaph.textContent,
+  excerptHtml: tombExcerpt.innerHTML,
+  fullHtml: $('fullText').innerHTML,
+  publicKey: 'demo',
+  stoneCount: 7
+};
+let activeTombData = defaultTombData;
+const droppedTombs = new Set();
 const dlines = [
   '晚上好。夜里来的人，脚步总是轻一些。',
   '这园子里的每一块碑我都读过。你若葬了什么在这里，我会替你守着。',
@@ -531,6 +589,38 @@ const dlines = [
   '去走走吧。有些碑，要慢下来才看得见。'
 ];
 let dIdx = 0;
+function escapeHtml(text){
+  return String(text ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+function voiceClass(role, i){
+  if (role === 'h' || role === 'me' || i % 2 === 0) return 'voice-h';
+  return 'voice-ai';
+}
+function resetPile(count){
+  pile.innerHTML = '';
+  stones = 0;
+  for (let i=0;i<count;i++) addStone(false);
+}
+function renderTomb(data){
+  activeTombData = data || defaultTombData;
+  tombDate.textContent = activeTombData.date || defaultTombData.date;
+  tombEpitaph.textContent = activeTombData.epitaph || defaultTombData.epitaph;
+  if (activeTombData.excerptHtml){
+    tombExcerpt.innerHTML = activeTombData.excerptHtml;
+  } else {
+    tombExcerpt.innerHTML = (activeTombData.excerpt || []).map((line, i) =>
+      `<div class="${voiceClass(line.role, i)}">${escapeHtml(line.text)}</div>`
+    ).join('');
+  }
+  $('fullText').classList.remove('show');
+  $('fullText').innerHTML = activeTombData.fullHtml ||
+    (activeTombData.fullText ? `<div>${escapeHtml(activeTombData.fullText)}</div>` : '');
+  $('dig').textContent = '往下挖';
+  $('dig').style.display = $('fullText').innerHTML ? '' : 'none';
+  resetPile(activeTombData.stoneCount ?? 0);
+}
 function openDavid(){ dOpened = true; dIdx = 0;
   $('dline').textContent = dlines[0]; $('dnext').textContent = '听他说下去'; $('david').classList.add('show'); }
 $('dnext').addEventListener('click', ()=>{
@@ -541,7 +631,10 @@ $('dnext').addEventListener('click', ()=>{
 $('dbye').addEventListener('click', ()=>{ dOpened=false; $('david').classList.remove('show'); });
 function toast(t){ const el=$('toast'); el.textContent=t; el.style.opacity=1;
   clearTimeout(el._t); el._t=setTimeout(()=>el.style.opacity=0, 2200); }
-function openTomb(){ opened = true; $('tomb').classList.add('show'); }
+function openTomb(){
+  renderTomb(activeTomb.userData.tombData || defaultTombData);
+  opened = true; $('tomb').classList.add('show');
+}
 $('hint').addEventListener('click', ()=>{ nearDavid ? openDavid() : openTomb(); });
 $('leave').addEventListener('click', ()=>{ opened=false; $('tomb').classList.remove('show'); });
 $('dig').addEventListener('click', ()=>{
@@ -549,18 +642,18 @@ $('dig').addEventListener('click', ()=>{
   $('dig').textContent = full.classList.contains('show') ? '覆上土' : '往下挖';
 });
 $('share').addEventListener('click', async ()=>{
-  try { await navigator.clipboard.writeText('https://bluefairy.example/tomb/demo'); } catch(e){}
+  const key = activeTombData.publicKey || 'demo';
+  try { await navigator.clipboard.writeText(`${location.origin}/tomb/${encodeURIComponent(key)}`); } catch(e){}
   toast('碑址已复制'); });
 $('find').addEventListener('click', ()=>{
-  const target = special.position.clone();
-  const away = new THREE.Vector3(Math.sin(special.rotation.y), 0, Math.cos(special.rotation.y)).multiplyScalar(5.6);
+  const targetTomb = readableTombs.find(t => t.userData.fromDatabase) || special;
+  const target = targetTomb.position.clone();
+  const away = new THREE.Vector3(Math.sin(targetTomb.rotation.y), 0, Math.cos(targetTomb.rotation.y)).multiplyScalar(5.6);
   player.position.set(target.x-away.x, 0, target.z-away.z);
   yaw = Math.atan2(target.x-player.position.x, target.z-player.position.z);
   pitch = .18;
   toast('已带你到这块碑前');
 });
-const pile = $('pile'); const blues=['#0D2A42','#12324E','#183A57','#1B4364'];
-let stones = 0;
 function addStone(anim){
   const n = stones++;
   const el = document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -581,11 +674,13 @@ function addStone(anim){
     requestAnimationFrame(()=>requestAnimationFrame(()=>el.style.transform='translateY(0)'));
   } else { pile.appendChild(el); }
 }
-for (let i=0;i<7;i++) addStone(false);
+resetPile(defaultTombData.stoneCount);
 $('drop').addEventListener('click', ()=>{
-  if (dropped){ toast('你已在碑前放过一颗石子'); return; }
-  dropped = true; addStone(true);
+  const key = activeTombData.id || activeTombData.publicKey || 'demo';
+  if (droppedTombs.has(key)){ toast('你已在碑前放过一颗石子'); return; }
+  droppedTombs.add(key); addStone(true);
 });
+loadDatabaseTombs();
 
 // ---------- 主循环 ----------
 const clock = new THREE.Clock();
@@ -676,9 +771,14 @@ function frame(){
   camera.position.lerp(new THREE.Vector3(cx, player.position.y+ch, cz), Math.min(1, dt*4.2));
   camera.lookAt(player.position.x, player.position.y+1.08, player.position.z);
 
-  const dTomb = player.position.distanceTo(special.position);
-  nearTomb = dTomb < 3.2;
-  let glowTarget = special, glowDist = dTomb;
+  let readTarget = special, readDist = player.position.distanceTo(special.position);
+  readableTombs.forEach(tomb => {
+    const d = player.position.distanceTo(tomb.position);
+    if (d < readDist){ readDist = d; readTarget = tomb; }
+  });
+  nearTomb = readDist < 3.2;
+  if (nearTomb) activeTomb = readTarget;
+  let glowTarget = special, glowDist = player.position.distanceTo(special.position);
   tombs.forEach(tomb => {
     const d = player.position.distanceTo(tomb.position);
     if (d < glowDist){ glowDist = d; glowTarget = tomb; }
